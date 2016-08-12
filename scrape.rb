@@ -16,7 +16,8 @@ if File.exists? 'kad.config'
   end
 else
   puts "Please create a 'kad.config' file in this directory.\
-  It should include your email and kadenze password"
+  It should include your email, kadenze password, and a depth limit\
+  for the search, each on a separate line."
 end
 
 # with_wait(timeout_len, WebDriver_instance, lambda(wait, driver))
@@ -38,8 +39,19 @@ end
 def save_img(driver, img_dir)
   with_wait(2, driver) do |wait, d|
     filename = d.current_url
-                .split('https://www.kadenze.com/').last
-    filename = filename.nil? ? 'root.png' : filename.split('/').last.concat('.png')
+                .gsub(/#/, '') 
+                .split('https://www.kadenze.com/')
+                .last
+    if filename.nil?
+      filename = 'root.png'
+    else
+      filename = filename.split('/')
+      if filename.include? 'info'
+        filename = filename.slice(-2,2).join('-').concat('.png')
+      else
+        filename = filename.last.concat('.png')
+      end
+    end
     puts filename
     d.save_screenshot File.join(img_dir, filename)
   end
@@ -56,7 +68,7 @@ def get_next_links(driver, current_depth, url_queue, visited)
       .select { |ele| ele['href'] }
       .map { |ele| ele['href'] }
       .select { |url| url.start_with? 'https://www.kadenze.com/' }
-      .reject { |url| url_queue.include?(url) || visited.include?(url) }
+      .reject { |url| url.include? 'sign_out' || url_queue.include?(url) || visited.include?(url) }
       .map { |url| { url: url, depth: current_depth + 1 } }
       .uniq
   end
@@ -96,9 +108,8 @@ begin
     puts "#{current_depth}: #{current_url}"
   end
 
-rescue Exception => e
-    puts e
-
+# rescue Exception => e
+#     puts e
 end
 
 driver.quit
