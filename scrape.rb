@@ -2,7 +2,12 @@ require 'selenium-webdriver'
 
 img_dir = File.join File.dirname(__FILE__), 'img'
 
-username, password = nil, nil
+# Create image directory if it doesn't exist already
+if !Dir.exist? img_dir
+end
+
+# Collect our credentials from the config file
+username, password, depth_limit = nil, nil, nil
 if File.exists? 'kad.config'
   File.open('kad.config', 'r') do |file|
     username = file.readline
@@ -14,10 +19,10 @@ else
   It should include your email and kadenze password"
 end
 
-start = 'https://kadenze.com/sign_in'
-
-driver = Selenium::WebDriver.for :chrome
-
+# with_wait(timeout_len, WebDriver_instance, lambda(wait, driver))
+# method that will run a block that will execute a block
+# that takes a wait and a driver after waiting for all animations
+# and ajax queries to settle down on a page
 def with_wait(n, driver, &block)
   wait = Selenium::WebDriver::Wait.new timeout: n
   wait.until { driver.execute_script('return $(":animated").length == 0 && $.active <= 0') }
@@ -26,6 +31,10 @@ def with_wait(n, driver, &block)
   res
 end
 
+# save_img(WebDriver_instance, image_directory_name)
+# Will take a screenshot of the page the WebDriver_instance is currently
+# on and store it in the image directory with name image_directory_name.
+# Files will be named according to the last part of their url.
 def save_img(driver, img_dir)
   with_wait(2, driver) do |wait, d|
     filename = d.current_url
@@ -36,6 +45,11 @@ def save_img(driver, img_dir)
   end
 end
 
+# get_next_links(WebDriver_instance, integer, [String], [String])
+# Will grab all <a> tags on the current page, extract their hrefs
+# and filter those hrefs so there are no duplicates of urls in the
+# queue or in the list of visited urls and so that the returned
+# list of urls has no duplicates.
 def get_next_links(driver, current_depth, url_queue, visited)
   with_wait(2, driver) do |w, d|
     w.until { d.find_elements tag_name: 'a' }
@@ -44,10 +58,16 @@ def get_next_links(driver, current_depth, url_queue, visited)
       .select { |url| url.start_with? 'https://www.kadenze.com/' }
       .reject { |url| url_queue.include?(url) || visited.include?(url) }
       .map { |url| { url: url, depth: current_depth + 1 } }
+      .uniq
   end
 end
 
+# The main script.
+# Essentially a BFS beginning with the course dashboard that is presented ot a user
+# after log in.
 begin
+  start = 'https://kadenze.com/sign_in'
+  driver = Selenium::WebDriver.for :chrome
   driver.get start
 
   with_wait(2, driver) do |wait, d|
@@ -83,4 +103,4 @@ end
 
 driver.quit
 puts "Completed at depth: #{current_depth}"
-puts "Collected #{Dir.new(img_idr).size} images"
+puts "Collected #{Dir.new(img_dir).size} images"
