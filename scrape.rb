@@ -68,7 +68,11 @@ def get_next_links(driver, current_depth, url_queue, visited)
       .select { |ele| ele['href'] }
       .map { |ele| ele['href'] }
       .select { |url| url.start_with? 'https://www.kadenze.com/' }
-      .reject { |url| url.include?('enroll') || url.include?('sign_out') || url_queue.include?(url) || visited.include?(url) }
+      .reject { |url| url.include?('assets') \
+                || url.include?('enroll') \
+                || url.include?('sign_out') \
+                || url_queue.include?(url) \
+                || visited.include?(url) }
       .map { |url| { url: url, depth: current_depth + 1 } }
       .uniq
   end
